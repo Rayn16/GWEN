@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Depths of Gwen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  /* Layout: a torchlit map on the left, a carved stat tablet on the right; stacks on phones. */
+  /* One committed look: lamplight on cold blue stone, in every host theme. */
+  :root {
+    --ground: #12141f;     /* unseen darkness and page */
+    --stone: #262a3d;      /* remembered walls */
+    --stone-lit: #3b4160;  /* walls in torchlight */
+    --floor: #1a1d2c;      /* floor slabs */
+    --panel: #1b1e2d;      /* tablet surface */
+    --rule: #33384f;       /* hairlines and borders */
+    --ink: #e9dfc7;        /* parchment text */
+    --dim: #8b8aa0;        /* secondary text */
+    --torch: #f2b84b;      /* the one accent: lamplight, the hero, the goal */
+    --blood: #d9475c;      /* damage and low health */
+    --life: #6cc28a;       /* healing, good news */
+    --mana: #8fa6f2;       /* experience */
+    --font-display: "IM Fell English SC", "Iowan Old Style", Georgia, serif;
+    --font-body: "Spectral", "Iowan Old Style", Georgia, serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: dark;
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background: radial-gradient(120% 80% at 30% 0%, #1c2033 0%, var(--ground) 60%) fixed, var(--ground);
+    color: var(--ink);
+    font: 16px/1.5 var(--font-body);
+    padding: 20px 16px 32px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; }
+  h1 {
+    margin: 0; font: 400 clamp(2rem, 5vw, 3.1rem)/1 var(--font-display);
+    color: var(--torch); letter-spacing: 0.02em; text-wrap: balance;
+    text-shadow: 0 0 22px rgba(242, 184, 75, 0.25);
+  }
+  .tagline { margin: 0; color: var(--dim); font-style: italic; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+  .stage { display: grid; gap: 12px; min-width: 0; }
+  .board-frame {
+    position: relative; border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--ground); box-shadow: 0 0 0 4px var(--panel), 0 18px 50px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: auto; max-width: 100%; cursor: crosshair; image-rendering: auto; }
+
+  #log { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; min-height: 9.5em; font-size: 0.95rem; }
+  #log li { color: var(--dim); }
+  #log li[data-fresh="true"] { color: var(--ink); }
+  #log li[data-kind="hurt"][data-fresh="true"], #log li[data-kind="death"] { color: var(--blood); }
+  #log li[data-kind="good"][data-fresh="true"], #log li[data-kind="level"][data-fresh="true"] { color: var(--life); }
+  #log li[data-kind="win"], #log li[data-kind="hint"][data-fresh="true"] { color: var(--torch); }
+
+  aside {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px; display: grid; gap: 18px;
+  }
+  .label { font: 600 0.7rem/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+  .floor { display: flex; justify-content: space-between; align-items: baseline; }
+  .floor strong { font: 400 1.8rem/1 var(--font-display); color: var(--torch); font-variant-numeric: tabular-nums; }
+
+  .meter { display: grid; gap: 6px; }
+  .meter-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .meter-head span:last-child { font: 500 0.85rem var(--font-mono); font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; background: var(--ground); border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; }
+  .bar > div { height: 100%; transition: width 160ms ease; }
+  #hp-fill { background: var(--life); }
+  #hp-fill[data-low="true"] { background: var(--blood); }
+  #xp-fill { background: var(--mana); }
+
+  dl.stats { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  dl.stats div { border-top: 1px solid var(--rule); padding-top: 8px; display: grid; gap: 4px; }
+  dl.stats dt { margin: 0; }
+  dl.stats dd { margin: 0; font: 600 1.25rem/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button {
+    font: 600 0.85rem/1 var(--font-mono); color: var(--ink); background: var(--floor);
+    border: 1px solid var(--rule); border-radius: 3px; padding: 10px 8px; cursor: pointer;
+    transition: border-color 120ms, color 120ms, background 120ms;
+  }
+  button:hover:not(:disabled) { border-color: var(--torch); color: var(--torch); }
+  button:focus-visible { outline: 2px solid var(--torch); outline-offset: 2px; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .actions button kbd { color: var(--dim); font: inherit; margin-left: 4px; }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 48px); gap: 6px; justify-content: center; }
+  .pad button { height: 44px; padding: 0; font-size: 1.05rem; }
+  @media (hover: hover) and (pointer: fine) and (min-width: 861px) { .pad { display: none; } }
+
+  .legend { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.9rem; }
+  .legend dt { font: 600 1rem var(--font-mono); text-align: center; min-width: 1.2em; }
+  .legend dd { margin: 0; color: var(--dim); }
+
+  .keys { margin: 0; color: var(--dim); font-size: 0.85rem; }
+  .keys kbd { font: 500 0.8rem var(--font-mono); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; }
+  .run { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--dim); font: 500 0.75rem var(--font-mono); font-variant-numeric: tabular-nums; }
+  .run button { padding: 6px 8px; font-size: 0.75rem; }
+
+  #overlay {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 12px;
+    padding: 16px; background: rgba(18, 20, 31, 0.86); backdrop-filter: blur(2px);
+  }
+  #overlay h2 { margin: 0; font: 400 clamp(1.6rem, 4vw, 2.6rem)/1.1 var(--font-display); color: var(--torch); text-wrap: balance; }
+  #overlay p { margin: 0 auto; max-width: 42ch; }
+  #overlay button { justify-self: center; padding: 12px 18px; border-color: var(--torch); color: var(--torch); }
+
+  @media (prefers-reduced-motion: reduce) { .bar > div, button { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Depths of Gwen</h1>
+    <p class="tagline">Five floors down, one amulet, no light but yours.</p>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Dungeon">
+      <div class="board-frame">
+        <canvas id="board" aria-label="Dungeon map. Use the arrow keys to move."></canvas>
+        <div id="overlay" hidden>
+          <h2 id="overlay-title"></h2>
+          <p id="overlay-body"></p>
+          <button id="restart" type="button">Descend again</button>
+        </div>
+      </div>
+      <ol id="log" aria-live="polite"></ol>
+    </section>
+
+    <aside aria-label="Character">
+      <div class="floor"><span class="label">Floor</span><strong id="depth">1 / 5</strong></div>
+
+      <div class="meter">
+        <div class="meter-head"><span class="label">Health</span><span id="hp-text"></span></div>
+        <div class="bar"><div id="hp-fill"></div></div>
+      </div>
+      <div class="meter">
+        <div class="meter-head"><span class="label">Experience</span><span id="xp-text"></span></div>
+        <div class="bar"><div id="xp-fill"></div></div>
+      </div>
+
+      <dl class="stats">
+        <div><dt class="label">Level</dt><dd id="level"></dd></div>
+        <div><dt class="label">Attack</dt><dd id="atk"></dd></div>
+        <div><dt class="label">Defense</dt><dd id="def"></dd></div>
+      </dl>
+
+      <div class="actions">
+        <button id="quaff" type="button">Drink (<span id="potions">0</span>)<kbd>Q</kbd></button>
+        <button id="descend" type="button">Descend<kbd>&gt;</kbd></button>
+      </div>
+
+      <div class="pad" aria-label="Movement pad">
+        <button type="button" data-dir="-1,-1" aria-label="Move up-left">↖</button>
+        <button type="button" data-dir="0,-1" aria-label="Move up">↑</button>
+        <button type="button" data-dir="1,-1" aria-label="Move up-right">↗</button>
+        <button type="button" data-dir="-1,0" aria-label="Move left">←</button>
+        <button type="button" data-dir="0,0" aria-label="Wait a turn">·</button>
+        <button type="button" data-dir="1,0" aria-label="Move right">→</button>
+        <button type="button" data-dir="-1,1" aria-label="Move down-left">↙</button>
+        <button type="button" data-dir="0,1" aria-label="Move down">↓</button>
+        <button type="button" data-dir="1,1" aria-label="Move down-right">↘</button>
+      </div>
+
+      <dl class="legend">
+        <dt style="color: var(--torch)">@</dt><dd>You</dd>
+        <dt style="color: #c9b79c">r</dt><dd>Rat, goblin <span style="color:#8fcf5f">g</span>, skeleton <span style="color:#e6e1d3">s</span></dd>
+        <dt style="color: #d9824a">o</dt><dd>Orc and troll <span style="color:#6fb3a8">T</span>, floor 3 and deeper</dd>
+        <dt style="color: #e0566b">!</dt><dd>Healing potion, restores 10 HP</dd>
+        <dt style="color: #9ec3e6">/</dt><dd>Whetstone, +1 attack; buckler <span style="color:#b8a6d9">]</span> +1 defense</dd>
+        <dt style="color: var(--torch)">&gt;</dt><dd>Stairs down; the amulet <span style="color:#f2c14e">"</span> waits on floor 5</dd>
+      </dl>
+
+      <p class="keys">Move with <kbd>arrows</kbd>, <kbd>WASD</kbd> or <kbd>hjkl</kbd>, diagonals <kbd>yubn</kbd>. Wait with <kbd>space</kbd>. Bump a monster to attack it. You can also click the map to step toward a spot.</p>
+
+      <div class="run">
+        <span>Seed <span id="seed"></span> · turn <span id="turn">0</span> · <span id="kills">0</span> kills</span>
+        <button id="new-game" type="button">New dungeon</button>
+      </div>
+    </aside>
+  </main>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

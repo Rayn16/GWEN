@@ -1,0 +1,11 @@
+{
+  "name": "depths-of-gwen",
+  "version": "0.1.0",
+  "description": "A small turn-based dungeon crawler with a standalone, testable game model.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "start": "python3 -m http.server 8000"
+  }
+}
